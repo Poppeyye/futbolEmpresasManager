@@ -11,35 +11,45 @@ def get_calendar_fe():
     url = f'https://www.futbolempresas.es/calendario/{TEAM_NAME_DASHED}/'
 
     response = requests.get(url)
-
     if response.status_code == 200:
+
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        card_contents = soup.find_all('div', class_='card__content')
+        dates = soup.find_all('time', class_='widget-game-result__date')
 
-        for card_content in card_contents:
-            text = card_content.get_text(strip=True)
+        venues = soup.find_all('div', class_='widget-game-result__venue')
 
-            date_match = re.search(r'(\d{2}/\d{2}/\d{4})', text)
-            date = date_match.group(1) if date_match else "Date not found"
+        score_links = soup.find_all('a', class_='widget-game-result__score')
 
-            time_match = re.search(r'(\d{2}:\d{2})', text)
-            time = time_match.group(1) if time_match else "Time not found"
+        result_list = []
 
-            parts = text.split(time)
-            location_title = parts[1].strip()
+        for date, venue, score_link in zip(dates, venues, score_links):
+            date_value = date.get_text(strip=True)
+            date_match = re.search(r'(\d{2}/\d{2}/\d{4})', date_value)
+            extracted_date = date_match.group(1)
+            time_value = date.find('span', class_='event-time-status').get_text(strip=True)
 
-            title, location = location_title.split('-') if '-' in location_title else (location_title, "")
-            title = title.replace(TEAM_NAME, f" {TEAM_NAME}").strip()
+            # Obtener el título del enlace y parsearlo
+            score_title = score_link.get('href')
+            vs_index = score_title.find('vs')
 
-            print("Date:", date)
-            print("Time:", time)
-            print("Title:", title)
-            print("Location:", location)
-            print("------")
-            return {"date": date,
-                    "time": time,
-                    "title": title,
-                    "location": location}
-    else:
-        print("Failed to fetch the URL. Status code:", response.status_code)
+            # Formatear el título adecuadamente
+            if vs_index != -1:
+                team1 = score_title[:vs_index].split('/')[-1].replace('-', ' ').title()
+                team2 = score_title[vs_index + 2:].split('/')[-2].replace('-', ' ').title()
+                title_value = f"{team1} vs {team2}"
+            else:
+                title_value = ""
+
+            location_value = venue.get_text(strip=True)
+
+            result_dict = {
+                "date": extracted_date,
+                "time": time_value,
+                "title": title_value,
+                "location": location_value
+            }
+
+            result_list.append(result_dict)
+
+        return result_list

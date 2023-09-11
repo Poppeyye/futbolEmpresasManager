@@ -31,14 +31,31 @@ def gcalendar_service():
     return service
 
 
-def parse_event_info(event_info):
+def get_next_date_match(event_info):
+    # Get today's date as a datetime object
+    today_date = datetime.now()
+
+    # Initialize a variable to store the filtered result
+    filtered_result = None
+
+    # Iterate through the list and find the first dictionary with a date greater than today
+    for entry in event_info:
+        entry_date = datetime.strptime(entry['date'], '%d/%m/%Y')
+        if entry_date > today_date:
+            filtered_result = entry
+            break
+    return filtered_result
+
+
+def parse_dates(event_info):
     event_date = datetime.strptime(event_info['date'], '%d/%m/%Y').strftime('%Y-%m-%d')
     event_time = datetime.strptime(event_info['time'], '%H:%M').strftime('%H:%M:%S')
     return event_date, event_time
 
 
 def send_event_to_calendar(event_info, service):
-    event_date, event_time = parse_event_info(event_info)
+    event_info = get_next_date_match(event_info)
+    event_date, event_time = parse_dates(event_info)
     start_time = event_time
     event_time = datetime.strptime(event_time, '%H:%M:%S')
     event_time += timedelta(minutes=50)
